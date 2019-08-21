@@ -81,6 +81,10 @@ class DocumentWebView: UIView, Loggable {
         ]
     }
     
+    var userJsEvents = [String: (Any) -> Void]()
+    var userJsScripts = [WKUserScript]()
+    var transformHtml : ((_ rawHtml : String) -> String)?
+    
     var sizeObservation: NSKeyValueObservation?
 
     required init(baseURL: URL, resourcesURL: URL?, initialLocation: BinaryLocation, contentLayout: ContentLayoutStyle, readingProgression: ReadingProgression, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]) {
@@ -128,6 +132,10 @@ class DocumentWebView: UIView, Loggable {
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapBackground)))
         
         for script in makeScripts() {
+            webView.configuration.userContentController.addUserScript(script)
+        }
+        
+        for script in self.userJsScripts {
             webView.configuration.userContentController.addUserScript(script)
         }
 
@@ -178,7 +186,21 @@ class DocumentWebView: UIView, Loggable {
     }
 
     func load(_ url: URL) {
-        webView.load(URLRequest(url: url))
+        URLSession.shared.dataTask(with: URLRequest(url: url)) { data, response, error in
+            guard let responseData = data else {
+                self.log(.error, "page response nil for \(url.path)")
+                return
+            }
+            guard let html = String.init(data: responseData, encoding: .utf8) else {
+                self.log(.error, "page response cannot cast to string \(url.path)")
+                return
+            }
+            
+            let findHtml = self.transformHtml != nil ? self.transformHtml!(html) : html
+            DispatchQueue.main.async {
+                self.webView.loadHTMLString(findHtml, baseURL: url)
+            }
+        }.resume()
     }
     
     /// Evaluates the given JavaScript into the resource's HTML page.
@@ -423,6 +445,10 @@ extension DocumentWebView: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
         if let handler = jsEvents[message.name] {
+            handler(message.body)
+        }
+        
+        if let handler = self.userJsEvents[message.name] {
             handler(message.body)
         }
     }

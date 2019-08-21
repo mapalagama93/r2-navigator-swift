@@ -44,6 +44,12 @@ public extension EPUBNavigatorDelegate {
 
 }
 
+public protocol DocumentViewComponentsDelegate : class {
+    func epubDocumentViewUserScripts(ForBaseURL baseUrl : URL, pageUrl : URL) -> [WKUserScript]
+    func epubDocumentViewJsEventHandlers(ForBaseURL baseUrl : URL, pageUrl : URL) -> [String: (Any) -> Void]
+    func epubDocumentViewTransform(ForBaseURL baseUrl : URL, pageUrl : URL, html : String) -> String
+}
+
 
 public typealias EPUBContentInsets = (top: CGFloat, bottom: CGFloat)
 
@@ -51,6 +57,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     
     public weak var delegate: EPUBNavigatorDelegate?
     public var userSettings: UserSettings
+    public weak var componentDelegate : DocumentViewComponentsDelegate?
     
     private let publication: Publication
     private let license: DRMLicense?
@@ -401,7 +408,24 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
             contentInset: contentInset
         )
 
+       
+        
         if let url = publication.url(to: link) {
+            
+            if let del = self.componentDelegate {
+                webView.transformHtml = { html in
+                    return del.epubDocumentViewTransform(ForBaseURL: baseURL, pageUrl: url, html: html)
+                }
+            }
+            
+            if let eventHandlers = self.componentDelegate?.epubDocumentViewJsEventHandlers(ForBaseURL: baseURL, pageUrl: url) {
+                webView.userJsEvents = eventHandlers
+            }
+            
+            if let scripts = self.componentDelegate?.epubDocumentViewUserScripts(ForBaseURL: baseURL, pageUrl: url) {
+                webView.userJsScripts = scripts
+            }
+            
             webView.viewDelegate = self
             webView.load(url)
             webView.userSettings = userSettings
