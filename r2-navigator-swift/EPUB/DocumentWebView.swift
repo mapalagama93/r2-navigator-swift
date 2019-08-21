@@ -134,10 +134,6 @@ class DocumentWebView: UIView, Loggable {
         for script in makeScripts() {
             webView.configuration.userContentController.addUserScript(script)
         }
-        
-        for script in self.userJsScripts {
-            webView.configuration.userContentController.addUserScript(script)
-        }
 
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverStatusDidChange), name: Notification.Name(UIAccessibilityVoiceOverStatusChanged), object: nil)
     }
@@ -186,6 +182,9 @@ class DocumentWebView: UIView, Loggable {
     }
 
     func load(_ url: URL) {
+        for script in self.userJsScripts {
+            webView.configuration.userContentController.addUserScript(script)
+        }
         URLSession.shared.dataTask(with: URLRequest(url: url)) { data, response, error in
             guard let responseData = data else {
                 self.log(.error, "page response nil for \(url.path)")
