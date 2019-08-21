@@ -139,6 +139,13 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         delegate?.willExitPublication(documentIndex: triptychView.index, progression: triptychView.currentDocumentProgression)
     }
 
+    
+    public func execJS(script : String) {
+        if let dv = triptychView.currentView as? DocumentWebView {
+            dv.evaluateScriptInResource(script)
+        }
+    }
+    
     /// Mapping between reading order hrefs and the table of contents title.
     private lazy var tableOfContentsTitleByHref: [String: String] = {
         func fulfill(linkList: [Link]) -> [String: String] {
@@ -462,7 +469,6 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
             }
         }
     }
-    
 }
 
 
