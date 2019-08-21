@@ -462,6 +462,12 @@ extension DocumentWebView: WKScriptMessageHandler {
         for eventName in jsEvents.keys {
             webView.configuration.userContentController.add(self, name: eventName)
         }
+        for eventName in  self.userJsEvents.keys {
+            if(EPUBNavigatorViewController.logging) {
+                print("adding js event to webview", eventName)
+            }
+            webView.configuration.userContentController.add(self, name: eventName)
+        }
         hasLoadedJsEvents = true
     }
 
