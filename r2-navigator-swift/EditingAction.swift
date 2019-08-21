@@ -57,7 +57,7 @@ final class EditingActionsController {
                 return true
             }
         }
-        return true
+        return false
     }
     
     
