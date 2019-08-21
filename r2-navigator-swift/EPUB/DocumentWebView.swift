@@ -183,6 +183,9 @@ class DocumentWebView: UIView, Loggable {
 
     func load(_ url: URL) {
         for script in self.userJsScripts {
+            if EPUBNavigatorViewController.logging {
+                print("js scripts added in webview")
+            }
             webView.configuration.userContentController.addUserScript(script)
         }
         URLSession.shared.dataTask(with: URLRequest(url: url)) { data, response, error in

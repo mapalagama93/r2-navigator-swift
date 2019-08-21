@@ -54,7 +54,7 @@ public protocol DocumentViewComponentsDelegate : class {
 public typealias EPUBContentInsets = (top: CGFloat, bottom: CGFloat)
 
 open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Loggable {
-    
+    public static var logging = false
     public weak var delegate: EPUBNavigatorDelegate?
     public var userSettings: UserSettings
     public weak var componentDelegate : DocumentViewComponentsDelegate?
@@ -414,15 +414,24 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
             
             if let del = self.componentDelegate {
                 webView.transformHtml = { html in
+                    if EPUBNavigatorViewController.logging {
+                        print("on html transform ", url)
+                    }
                     return del.epubDocumentViewTransform(ForBaseURL: baseURL, pageUrl: url, html: html)
                 }
             }
             
             if let eventHandlers = self.componentDelegate?.epubDocumentViewJsEventHandlers(ForBaseURL: baseURL, pageUrl: url) {
+                if EPUBNavigatorViewController.logging {
+                    print("js event handlers added ", eventHandlers.count)
+                }
                 webView.userJsEvents = eventHandlers
             }
             
             if let scripts = self.componentDelegate?.epubDocumentViewUserScripts(ForBaseURL: baseURL, pageUrl: url) {
+                if EPUBNavigatorViewController.logging {
+                    print("js scripts added ", scripts.count)
+                }
                 webView.userJsScripts = scripts
             }
             
