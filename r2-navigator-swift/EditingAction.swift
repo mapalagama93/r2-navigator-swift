@@ -25,25 +25,29 @@ public enum EditingAction: String {
 }
 
 
-protocol EditingActionsControllerDelegate: AnyObject {
+public protocol EditingActionsControllerDelegate: AnyObject {
     
     func editingActionsDidPreventCopy(_ editingActions: EditingActionsController)
-    
+    func canPerformAction(_ action: Selector) -> Bool
 }
 
 
 /// Handles the authorization and check of editing actions.
-final class EditingActionsController {
+public class EditingActionsController {
     
     public weak var delegate: EditingActionsControllerDelegate?
     
-    private let actions: [EditingAction]
-    private let license: DRMLicense?
+    public let actions: [EditingAction]
+    public var license: DRMLicense?
 
-    init(actions: [EditingAction], license: DRMLicense?) {
+    public init(actions: [EditingAction], license: DRMLicense?) {
         self.actions = actions
         self.license = license
-        
+        NotificationCenter.default.addObserver(self, selector: #selector(pasteboardDidChange), name: UIPasteboard.changedNotification, object: nil)
+    }
+    
+    public init(actions: [EditingAction]) {
+        self.actions = actions
         NotificationCenter.default.addObserver(self, selector: #selector(pasteboardDidChange), name: UIPasteboard.changedNotification, object: nil)
     }
     
@@ -56,6 +60,9 @@ final class EditingActionsController {
             if action == Selector(editingAction.rawValue) {
                 return true
             }
+        }
+        if let del = delegate {
+            return del.canPerformAction(action)
         }
         return false
     }

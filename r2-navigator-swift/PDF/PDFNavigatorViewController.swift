@@ -41,10 +41,14 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
     /// Positions list indexed by reading order.
     private let positionListByResourceIndex: [[Locator]]
 
-    public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil, editingActions: [EditingAction] = EditingAction.defaultActions) {
+    public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil, editingActionController: EditingActionsController? = nil) {
         self.publication = publication
         self.initialLocation = initialLocation
-        self.editingActions = EditingActionsController(actions: editingActions, license: license)
+        if let ec = editingActionController {
+            self.editingActions = ec
+        }else{
+            self.editingActions = EditingActionsController.init(actions: EditingAction.defaultActions)
+        }
         
         // FIXME: This should be cached, to avoid opening all the documents of the readingOrder
         positionListByResourceIndex = {
@@ -80,7 +84,6 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
         super.init(nibName: nil, bundle: nil)
         
         automaticallyAdjustsScrollViewInsets = false
-        self.editingActions.delegate = self
     }
     
     public required init?(coder aDecoder: NSCoder) {
@@ -312,10 +315,7 @@ extension PDFNavigatorViewController: PDFViewDelegate {
 }
 
 @available(iOS 11.0, *)
-extension PDFNavigatorViewController: EditingActionsControllerDelegate {
+extension PDFNavigatorViewController {
     
-    func editingActionsDidPreventCopy(_ editingActions: EditingActionsController) {
-        delegate?.navigator(self, presentError: .copyForbidden)
-    }
-    
+   
 }

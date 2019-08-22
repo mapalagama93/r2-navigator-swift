@@ -72,10 +72,16 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     /// Used to serve the ReadiumCSS files.
     private let resourcesURL: URL?
 
-    public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil, editingActions: [EditingAction] = EditingAction.defaultActions, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil, resourcesServer: ResourcesServer) {
+    public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil,
+                editingActionController: EditingActionsController? = nil,
+                contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil, resourcesServer: ResourcesServer) {
         self.publication = publication
         self.license = license
-        self.editingActions = EditingActionsController(actions: editingActions, license: license)
+        if let ec = editingActionController {
+            self.editingActions = ec
+        }else{
+            self.editingActions = EditingActionsController.init(actions: EditingAction.defaultActions)
+        }
         self.contentInset = contentInset ?? [
             .compact: (top: 20, bottom: 20),
             .regular: (top: 44, bottom: 44)
@@ -113,8 +119,6 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }()
         
         super.init(nibName: nil, bundle: nil)
-        
-        self.editingActions.delegate = self
     }
 
     @available(*, unavailable)
@@ -380,16 +384,6 @@ extension EPUBNavigatorViewController: DocumentWebViewDelegate {
         return goToIndex(triptychView.index - delta, animated: animated, completion: completion)
     }
 
-}
-
-extension EPUBNavigatorViewController: EditingActionsControllerDelegate {
-    
-    func editingActionsDidPreventCopy(_ editingActions: EditingActionsController) {
-        delegate?.navigator(self, presentError: .copyForbidden)
-        // FIXME: Deprecated, to be removed at some point.
-        delegate?.presentError(.copyForbidden)
-    }
-    
 }
 
 extension EPUBNavigatorViewController: TriptychViewDelegate {
