@@ -144,9 +144,9 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     }
 
     
-    public func execJS(script : String) {
+    public func execJS(script : String, completion: ((Any?, Error?) -> Void)? = nil) {
         if let dv = triptychView.currentView as? DocumentWebView {
-            dv.evaluateScriptInResource(script)
+            dv.evaluateScriptInResource(script, completion: completion)
         }
     }
     
