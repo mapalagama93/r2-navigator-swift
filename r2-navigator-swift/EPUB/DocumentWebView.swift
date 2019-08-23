@@ -413,9 +413,9 @@ class DocumentWebView: UIView, Loggable {
     
     func makeScripts() -> [WKUserScript] {
         var scripts: [WKUserScript] = []
-        if let gesturesScript = DocumentWebView.gesturesScript {
-            scripts.append(WKUserScript(source: gesturesScript, injectionTime: .atDocumentStart, forMainFrameOnly: false))
-        }
+//        if let gesturesScript = DocumentWebView.gesturesScript {
+//            scripts.append(WKUserScript(source: gesturesScript, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+//        }
         if let utilsScript = DocumentWebView.utilsScript {
             scripts.append(WKUserScript(source: utilsScript, injectionTime: .atDocumentStart, forMainFrameOnly: false))
         }
