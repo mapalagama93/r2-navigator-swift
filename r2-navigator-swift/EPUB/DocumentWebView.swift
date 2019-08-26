@@ -188,14 +188,21 @@ class DocumentWebView: UIView, Loggable {
             }
             webView.configuration.userContentController.addUserScript(script)
         }
-        print("loading url")
         do {
-            let html = try String.init(contentsOf: url)
+            var html = try String.init(contentsOf: url)
+            
+            if let tf = transformHtml {
+                html = tf(html)
+            }
+            
             DispatchQueue.main.async {
                 self.webView.loadHTMLString(html, baseURL: url)
             }
         } catch {
-            print("error while reading page")
+            print("error while loading html \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.webView.loadHTMLString("<h3> Page cannot load. Please contact support. </h3>", baseURL: url)
+            }
         }
     }
     
