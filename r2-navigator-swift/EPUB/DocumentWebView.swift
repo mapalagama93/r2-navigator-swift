@@ -188,21 +188,15 @@ class DocumentWebView: UIView, Loggable {
             }
             webView.configuration.userContentController.addUserScript(script)
         }
-        URLSession.shared.dataTask(with: URLRequest(url: url)) { data, response, error in
-            guard let responseData = data else {
-                self.log(.error, "page response nil for \(url.path)")
-                return
-            }
-            guard let html = String.init(data: responseData, encoding: .utf8) else {
-                self.log(.error, "page response cannot cast to string \(url.path)")
-                return
-            }
-            
-            let findHtml = self.transformHtml != nil ? self.transformHtml!(html) : html
+        print("loading url")
+        do {
+            let html = try String.init(contentsOf: url)
             DispatchQueue.main.async {
-                self.webView.loadHTMLString(findHtml, baseURL: url)
+                self.webView.loadHTMLString(html, baseURL: url)
             }
-        }.resume()
+        } catch {
+            print("error while reading page")
+        }
     }
     
     /// Evaluates the given JavaScript into the resource's HTML page.

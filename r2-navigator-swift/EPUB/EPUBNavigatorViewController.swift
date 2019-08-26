@@ -71,53 +71,34 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     /// Base URL on the resources server to the files in Static/
     /// Used to serve the ReadiumCSS files.
     private let resourcesURL: URL?
+    public var epubFolder : URL!
 
-    public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil,
-                editingActionController: EditingActionsController? = nil,
-                contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil, resourcesServer: ResourcesServer) {
+    public init(publication: Publication,
+                epubFolder : URL,
+                editingActionController: EditingActionsController,
+                contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil) {
         self.publication = publication
-        self.license = license
-        if let ec = editingActionController {
-            self.editingActions = ec
-        }else{
-            self.editingActions = EditingActionsController.init(actions: EditingAction.defaultActions)
-        }
+        self.epubFolder = epubFolder
+        self.editingActions = editingActionController
         self.contentInset = contentInset ?? [
             .compact: (top: 20, bottom: 20),
             .regular: (top: 44, bottom: 44)
         ]
-
         userSettings = UserSettings()
         publication.userProperties.properties = userSettings.userProperties.properties
-
-        var initialIndex: Int = 0
-        if let initialLocation = initialLocation, let foundIndex = publication.readingOrder.firstIndex(withHref: initialLocation.href) {
-            initialIndex = foundIndex
-            initialProgression = initialLocation.locations?.progression
-        }
-        
         triptychView = TriptychView(
             frame: CGRect.zero,
             viewCount: publication.readingOrder.count,
-            initialIndex: initialIndex,
+            initialIndex: 0,
             readingProgression: publication.contentLayout.readingProgression
         )
-        
+        self.license = nil
         resourcesURL = {
-            do {
                 guard let baseURL = Bundle(for: EPUBNavigatorViewController.self).resourceURL else {
                     return nil
                 }
-                return try resourcesServer.serve(
-                   baseURL.appendingPathComponent("Static"),
-                    at: "/r2-navigator/epub"
-                )
-            } catch {
-                EPUBNavigatorViewController.log(.error, error)
-                return nil
-            }
+                return baseURL.appendingPathComponent("Static")
         }()
-        
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -389,7 +370,7 @@ extension EPUBNavigatorViewController: DocumentWebViewDelegate {
 extension EPUBNavigatorViewController: TriptychViewDelegate {
 
     func triptychView(_ view: TriptychView, viewForIndex index: Int, location: BinaryLocation) -> UIView {
-        guard let baseURL = publication.baseURL else {
+        guard let baseURL = self.epubFolder else {
             return UIView()
         }
         
@@ -408,11 +389,7 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
             editingActions: editingActions,
             contentInset: contentInset
         )
-
-       
-        
-        if let url = publication.url(to: link) {
-            
+        let url = self.epubFolder.appendingPathComponent(link.href)
             if let del = self.componentDelegate {
                 webView.transformHtml = { html in
                     if EPUBNavigatorViewController.logging {
@@ -428,14 +405,12 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
                 }
                 webView.userJsEvents = eventHandlers
             }
-            
             if let scripts = self.componentDelegate?.epubDocumentViewUserScripts(ForBaseURL: baseURL, pageUrl: url) {
                 if EPUBNavigatorViewController.logging {
                     print("js scripts added ", scripts.count)
                 }
                 webView.userJsScripts = scripts
             }
-            
             webView.viewDelegate = self
             webView.load(url)
             webView.userSettings = userSettings
@@ -445,7 +420,6 @@ extension EPUBNavigatorViewController: TriptychViewDelegate {
                 webView.progression = initialProgression
                 initialProgression = nil
             }
-        }
         return webView
     }
     
