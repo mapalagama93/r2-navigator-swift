@@ -76,6 +76,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     public init(publication: Publication,
                 epubFolder : URL,
                 editingActionController: EditingActionsController,
+                initialLocation : Locator? = nil,
                 contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil) {
         self.publication = publication
         self.epubFolder = epubFolder
@@ -86,10 +87,18 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         ]
         userSettings = UserSettings()
         publication.userProperties.properties = userSettings.userProperties.properties
+        
+        var initialIndex: Int = 0
+        if let initialLocation = initialLocation, let foundIndex = publication.readingOrder.firstIndex(withHref: initialLocation.href) {
+            initialIndex = foundIndex
+            initialProgression = initialLocation.locations?.progression
+        }
+
+        
         triptychView = TriptychView(
             frame: CGRect.zero,
             viewCount: publication.readingOrder.count,
-            initialIndex: 0,
+            initialIndex: initialIndex,
             readingProgression: publication.contentLayout.readingProgression
         )
         self.license = nil
