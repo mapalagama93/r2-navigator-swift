@@ -271,11 +271,11 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
     }
     
     public func goForward(animated: Bool, completion: @escaping () -> Void) -> Bool {
-        if pdfView.canGoToNextPage() {
-            pdfView.goToNextPage(nil)
-            DispatchQueue.main.async(execute: completion)
-            return true
-        }
+//        if pdfView.canGoToNextPage() {
+//            pdfView.goToNextPage(nil)
+//            DispatchQueue.main.async(execute: completion)
+//            return true
+//        }
         
         let nextIndex = (currentResourceIndex ?? -1) + 1
         guard positionListByResourceIndex.indices.contains(nextIndex),
@@ -287,11 +287,11 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
     }
     
     public func goBackward(animated: Bool, completion: @escaping () -> Void) -> Bool {
-        if pdfView.canGoToPreviousPage() {
-            pdfView.goToPreviousPage(nil)
-            DispatchQueue.main.async(execute: completion)
-            return true
-        }
+//        if pdfView.canGoToPreviousPage() {
+//            pdfView.goToPreviousPage(nil)
+//            DispatchQueue.main.async(execute: completion)
+//            return true
+//        }
         
         let previousIndex = (currentResourceIndex ?? 0) - 1
         guard positionListByResourceIndex.indices.contains(previousIndex),
