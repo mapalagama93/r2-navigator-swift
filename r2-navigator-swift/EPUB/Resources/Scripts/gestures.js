@@ -1,50 +1,29 @@
 (function() {
-  var isTapping = false;
-  var touchStartTime = null;
-  var startX = 0;
-  var startY = 0;
+  window.addEventListener('DOMContentLoaded', function(event) {
+    // If we don't set the CSS cursor property to pointer, then the click events are not triggered pre-iOS 13.
+    document.body.style.cursor = 'pointer';
+    
+    document.addEventListener('click', onClick, false);
+  });
 
-  document.addEventListener('touchstart', touchstart, false);
-  document.addEventListener('touchend', touchend, false);
+  function onClick(event) {
 
-  function touchstart(event) {
-    isTapping = (event.touches.length == 1);
-    if (isInteractiveElement(event.target) || !isTapping) {
-      return;
-    }
-
-    var touch = event.changedTouches[0];
-    startX = touch.pageX;
-    startY = touch.pageY;
-    touchStartTime = Date.now();
-  }
-
-  function touchend(event) {
-    if (!isTapping || touchStartTime == null || Date.now() - touchStartTime > 500) {
-      return;
-    }
-    isTapping = false;
-
-    var touch = event.changedTouches[0];
-
-    function approximatelyEqual(a, b) {
-      return Math.abs(a - b) < 2;
-    }
-
-    if (!approximatelyEqual(startX, touch.pageX) || !approximatelyEqual(startY, touch.pageY)) {
-      return;
-    }
- 
     if (!window.getSelection().isCollapsed) {
       // There's an on-going selection, the tap will dismiss it so we don't forward it.
       return;
     }
 
+    // Send the tap data over the JS bridge even if it's been handled
+    // within the webview, so that it can be preserved and used
+    // by the WKNavigationDelegate if needed.
     webkit.messageHandlers.tap.postMessage({
-      "screenX": touch.screenX,
-      "screenY": touch.screenY,
-      "clientX": touch.clientX,
-      "clientY": touch.clientY,
+      "defaultPrevented": event.defaultPrevented,
+      "screenX": event.screenX,
+      "screenY": event.screenY,
+      "clientX": event.clientX,
+      "clientY": event.clientY,
+      "targetElement": event.target.outerHTML,
+      "interactiveElement": nearestInteractiveElement(event.target),
     });
 
     // We don't want to disable the default WebView behavior as it breaks some features without bringing any value.
@@ -52,10 +31,14 @@
 //    event.preventDefault();
   }
 
-  function isInteractiveElement(element) {
+  // See. https://github.com/JayPanoz/architecture/tree/touch-handling/misc/touch-handling
+  function nearestInteractiveElement(element) {
     var interactiveTags = [
       'a',
+      'audio',
       'button',
+      'canvas',
+      'details',
       'input',
       'label',
       'option',
@@ -64,18 +47,21 @@
       'textarea',
       'video',
     ]
-
-    // https://stackoverflow.com/questions/4878484/difference-between-tagname-and-nodename
     if (interactiveTags.indexOf(element.nodeName.toLowerCase()) != -1) {
-        return true;
+      return element.outerHTML;
+    }
+
+    // Checks whether the element is editable by the user.
+    if (element.hasAttribute('contenteditable') && element.getAttribute('contenteditable').toLowerCase() != 'false') {
+      return element.outerHTML;
     }
 
     // Checks parents recursively because the touch might be for example on an <em> inside a <a>.
     if (element.parentElement) {
-      return isInteractiveElement(element.parentElement);
+      return nearestInteractiveElement(element.parentElement);
     }
     
-    return false;
+    return null;
   }
 
 })();

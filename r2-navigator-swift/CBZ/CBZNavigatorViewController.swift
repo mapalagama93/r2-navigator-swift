@@ -20,13 +20,12 @@ public protocol CBZNavigatorDelegate: VisualNavigatorDelegate { }
 open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggable {
     
     public weak var delegate: CBZNavigatorDelegate?
-    
+
     private let publication: Publication
     private let initialIndex: Int
-    private let positionList: [Locator]
-    
+
     private let pageViewController: UIPageViewController
-    
+
     public init(publication: Publication, initialLocation: Locator? = nil) {
         self.publication = publication
         self.initialIndex = {
@@ -41,28 +40,15 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
             navigationOrientation: .horizontal
         )
         
-        let pageCount = publication.readingOrder.count
-        self.positionList = publication.readingOrder.enumerated().map { index, link in
-            Locator(
-                href: link.href,
-                type: link.type ?? "",
-                title: link.title,
-                locations: Locations(
-                    progression: Double(index) / Double(pageCount),
-                    position: index + 1
-                )
-            )
-        }
-        
         super.init(nibName: nil, bundle: nil)
         
         automaticallyAdjustsScrollViewInsets = false
     }
-    
+
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override open func viewDidLoad() {
         super.viewDidLoad()
         
@@ -74,7 +60,7 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         pageViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(pageViewController.view)
         pageViewController.didMove(toParent: self)
-        
+
         view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTap)))
         
         goToResourceAtIndex(initialIndex)
@@ -82,11 +68,18 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
     
     private var currentResourceIndex: Int {
         guard let imageViewController = pageViewController.viewControllers?.first as? ImageViewController,
-            positionList.indices.contains(imageViewController.index) else
+            publication.positions.indices.contains(imageViewController.index) else
         {
             return initialIndex
         }
         return imageViewController.index
+    }
+    
+    public var currentPosition: Locator? {
+        guard publication.positions.indices.contains(currentResourceIndex) else {
+            return nil
+        }
+        return publication.positions[currentResourceIndex]
     }
     
     @discardableResult
@@ -106,15 +99,15 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
             return forward ? .forward : .reverse
         }()
         pageViewController.setViewControllers([imageViewController], direction: direction, animated: animated) { [weak self] _ in
-            guard let `self` = self else {
+            guard let self = self, let position = self.currentPosition else {
                 return
             }
-            self.delegate?.navigator(self, locationDidChange: self.positionList[self.currentResourceIndex])
+            self.delegate?.navigator(self, locationDidChange: position)
             completion()
         }
         return true
     }
-    
+
     @objc private func didTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: view)
         delegate?.navigator(self, didTapAt: point)
@@ -129,16 +122,16 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         
         return ImageViewController(index: index, url: url)
     }
-    
-    
+
+
     // MARK: - Navigator
     
     public var readingProgression: ReadingProgression {
         return publication.contentLayout.readingProgression
     }
-    
+
     public var currentLocation: Locator? {
-        return positionList[currentResourceIndex]
+        return currentPosition
     }
     
     public func go(to locator: Locator, animated: Bool, completion: @escaping () -> Void) -> Bool {
@@ -162,7 +155,7 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
     public func goBackward(animated: Bool, completion: @escaping () -> Void) -> Bool {
         return goToResourceAtIndex(currentResourceIndex - 1, animated: animated, completion: completion)
     }
-    
+
 }
 
 extension CBZNavigatorViewController: UIPageViewControllerDataSource {
@@ -194,17 +187,17 @@ extension CBZNavigatorViewController: UIPageViewControllerDataSource {
         }
         return imageViewController(at: index)
     }
-    
+
 }
 
 extension CBZNavigatorViewController: UIPageViewControllerDelegate {
     
     public func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
-        if completed {
-            delegate?.navigator(self, locationDidChange: positionList[currentResourceIndex])
+        if completed, let position = currentPosition {
+            delegate?.navigator(self, locationDidChange: position)
         }
     }
-    
+
 }
 
 
@@ -221,7 +214,7 @@ extension CBZNavigatorViewController {
     public var totalPageNumber: Int {
         return publication.readingOrder.count
     }
-    
+
     @available(*, deprecated, renamed: "goForward")
     @objc public func loadNext() {
         goForward(animated: true)
