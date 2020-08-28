@@ -84,6 +84,22 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     /// Base URL on the resources server to the files in Static/
     /// Used to serve Readium CSS.
     private let resourcesURL: URL?
+    
+    public init(publication: Publication, initialLocation: Locator? = nil, config: Configuration = .init()) {
+        self.publication = publication
+        self.license = nil
+        self.editingActions = EditingActionsController(actions: config.editingActions, license: license)
+        self.userSettings = UserSettings()
+        publication.userProperties.properties = self.userSettings.userProperties.properties
+        self.readingProgression = publication.contentLayout.readingProgression
+        self.config = config
+        self.paginationView = PaginationView(frame: .zero, preloadPreviousPositionCount: config.preloadPreviousPositionCount, preloadNextPositionCount: config.preloadNextPositionCount)
+        self.resourcesURL = URL.init(string: "")
+        super.init(nibName: nil, bundle: nil)
+        self.editingActions.delegate = self
+        self.paginationView.delegate = self
+        reloadSpreads(at: initialLocation)
+    }
 
     public init(publication: Publication, license: DRMLicense? = nil, initialLocation: Locator? = nil,
                 resourcesServer: ResourcesServer, config: Configuration = .init()) {
@@ -200,7 +216,6 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }
     }
     
-    
     // MARK: - User settings
     
     public func updateUserSettingStyle() {
@@ -257,7 +272,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
                 return 0
             }
         }()
-        
+
         paginationView.reloadAtIndex(initialIndex, location: PageLocation(locator), pageCount: spreads.count, readingProgression: readingProgression)
     }
 
