@@ -20,13 +20,13 @@ public protocol CBZNavigatorDelegate: VisualNavigatorDelegate { }
 open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggable {
     
     public weak var delegate: CBZNavigatorDelegate?
-
+    
     private let publication: Publication
     private let initialIndex: Int
     private let positionList: [Locator]
     
     private let pageViewController: UIPageViewController
-
+    
     public init(publication: Publication, initialLocation: Locator? = nil) {
         self.publication = publication
         self.initialIndex = {
@@ -53,16 +53,16 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
                 )
             )
         }
-
+        
         super.init(nibName: nil, bundle: nil)
         
         automaticallyAdjustsScrollViewInsets = false
     }
-
+    
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
+    
     override open func viewDidLoad() {
         super.viewDidLoad()
         
@@ -74,7 +74,7 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         pageViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(pageViewController.view)
         pageViewController.didMove(toParent: self)
-
+        
         view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTap)))
         
         goToResourceAtIndex(initialIndex)
@@ -97,9 +97,9 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         let direction: UIPageViewController.NavigationDirection = {
             let forward: Bool = {
                 switch readingProgression {
-                case .ltr, .auto:
+                case .ltr, .ttb, .auto:
                     return (currentResourceIndex < index)
-                case .rtl:
+                case .rtl, .btt:
                     return (currentResourceIndex >= index)
                 }
             }()
@@ -114,7 +114,7 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         }
         return true
     }
-
+    
     @objc private func didTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: view)
         delegate?.navigator(self, didTapAt: point)
@@ -129,8 +129,8 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
         
         return ImageViewController(index: index, url: url)
     }
-
-
+    
+    
     // MARK: - Navigator
     
     public var readingProgression: ReadingProgression {
@@ -162,7 +162,7 @@ open class CBZNavigatorViewController: UIViewController, VisualNavigator, Loggab
     public func goBackward(animated: Bool, completion: @escaping () -> Void) -> Bool {
         return goToResourceAtIndex(currentResourceIndex - 1, animated: animated, completion: completion)
     }
-
+    
 }
 
 extension CBZNavigatorViewController: UIPageViewControllerDataSource {
@@ -173,9 +173,9 @@ extension CBZNavigatorViewController: UIPageViewControllerDataSource {
         }
         var index = imageVC.index
         switch readingProgression {
-        case .ltr, .auto:
+        case .ltr, .ttb, .auto:
             index -= 1
-        case .rtl:
+        case .rtl, .btt:
             index += 1
         }
         return imageViewController(at: index)
@@ -187,14 +187,14 @@ extension CBZNavigatorViewController: UIPageViewControllerDataSource {
         }
         var index = imageVC.index
         switch readingProgression {
-        case .ltr, .auto:
+        case .ltr, .ttb, .auto:
             index += 1
-        case .rtl:
+        case .rtl, .btt:
             index -= 1
         }
         return imageViewController(at: index)
     }
-
+    
 }
 
 extension CBZNavigatorViewController: UIPageViewControllerDelegate {
@@ -204,7 +204,7 @@ extension CBZNavigatorViewController: UIPageViewControllerDelegate {
             delegate?.navigator(self, locationDidChange: positionList[currentResourceIndex])
         }
     }
-
+    
 }
 
 
@@ -221,7 +221,7 @@ extension CBZNavigatorViewController {
     public var totalPageNumber: Int {
         return publication.readingOrder.count
     }
-
+    
     @available(*, deprecated, renamed: "goForward")
     @objc public func loadNext() {
         goForward(animated: true)

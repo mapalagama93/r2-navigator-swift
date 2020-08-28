@@ -103,11 +103,11 @@ public class EditingActionsController {
             return
         }
 
-        let authorizedText = license.copy(text)
-        if authorizedText != text {
-            // We overwrite the pasteboard only if the authorized text is different to avoid erasing formatting
-            pasteboard.string = authorizedText
-        }
+//        let authorizedText = license.copy(text)
+//        if authorizedText != text {
+//            // We overwrite the pasteboard only if the authorized text is different to avoid erasing formatting
+//            pasteboard.string = authorizedText
+//        }
     }
     
     private var copyTimer: Timer?

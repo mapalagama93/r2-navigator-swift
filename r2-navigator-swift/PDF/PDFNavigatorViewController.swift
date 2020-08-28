@@ -68,8 +68,8 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
                         type: link.type ?? "application/pdf",
                         // FIXME: title by finding the containing TOC item
                         title: nil,
-                        locations: Locations(
-                            fragment: "page=\(pageNumber)",
+                        locations: Locator.Locations(
+                            fragments: ["page=\(pageNumber)"],
                             progression: Double(pageNumber) / Double(pageCount),
                             position: lastPositionOfPreviousResource + pageNumber
                         )
@@ -201,7 +201,7 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
     }
     
     private func pageNumber(for locator: Locator, at resourceIndex: Int) -> Int? {
-        if let fragment = locator.locations?.fragment {
+        if let fragment = locator.locations.fragment {
             // https://tools.ietf.org/rfc/rfc3778
             let optionalPageParam = fragment
                 .components(separatedBy: CharacterSet(charactersIn: "&#"))
@@ -212,8 +212,8 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
             }
         }
         
-        if let position = locator.locations?.position,
-            let firstPosition = positionListByResourceIndex[resourceIndex].first?.locations?.position {
+        if let position = locator.locations.position,
+            let firstPosition = positionListByResourceIndex[resourceIndex].first?.locations.position {
             return position - firstPosition + 1
         }
         
@@ -249,7 +249,7 @@ open class PDFNavigatorViewController: UIViewController, VisualNavigator, Loggab
 
         /// Adds some context for bookmarking
         if let page = pdfView.currentPage {
-            locator.text = LocatorText(highlight: String(page.string?.prefix(280) ?? ""))
+//            locator.text = LocatorText(highlight: String(page.string?.prefix(280) ?? ""))
         }
         return locator
     }
