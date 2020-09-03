@@ -44,6 +44,9 @@ class EPUBSpreadView: UIView, Loggable {
     let publication: Publication
     let spread: EPUBSpread
     
+    var epubFolderPath : URL!
+    var customScripts : [WKUserScript]?
+    var jsEventHandlers : [String : (Any) -> Void]?
     let resourcesURL: URL?
     let webView: WebView
 
@@ -70,7 +73,7 @@ class EPUBSpreadView: UIView, Loggable {
 
     private(set) var spreadLoaded = false
 
-    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]) {
+    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, epubFolderPath :URL!, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets], customScripts : [WKUserScript], jsEventHandlers : [String : (Any) -> Void]?) {
         self.publication = publication
         self.spread = spread
         self.resourcesURL = resourcesURL
@@ -81,6 +84,8 @@ class EPUBSpreadView: UIView, Loggable {
         self.animatedLoad = animatedLoad
         self.webView = WebView(editingActions: editingActions)
         self.contentInset = contentInset
+        self.epubFolderPath = epubFolderPath
+        self.customScripts = customScripts
 
         super.init(frame: .zero)
         
@@ -98,6 +103,10 @@ class EPUBSpreadView: UIView, Loggable {
             webView.configuration.userContentController.addUserScript(script)
         }
         registerJSMessages()
+        
+        for (name, handler) in jsEventHandlers ?? [:] {
+            registerJSMessage(named: name , handler: handler)
+        }
 
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverStatusDidChange), name: Notification.Name(UIAccessibilityVoiceOverStatusChanged), object: nil)
         

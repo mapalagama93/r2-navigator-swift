@@ -59,10 +59,17 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         ]
         
         /// Number of positions (as in `Publication.positionList`) to preload before the current page.
-        public var preloadPreviousPositionCount = 2
+        public var preloadPreviousPositionCount = 1
         
         /// Number of positions (as in `Publication.positionList`) to preload after the current page.
-        public var preloadNextPositionCount = 6
+        public var preloadNextPositionCount = 3
+        
+        public var transformHtml :((_ html : String) -> String)?
+        
+        public var customScripts = [WKUserScript]()
+        
+        public var jsEventHandlers = [String : (Any) -> Void]()
+        
         
         public init() {}
     }
@@ -84,9 +91,14 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     /// Base URL on the resources server to the files in Static/
     /// Used to serve Readium CSS.
     private let resourcesURL: URL?
+    private var epubFolderPath : URL!
     
-    public init(publication: Publication, initialLocation: Locator? = nil, config: Configuration = .init()) {
+    public init(publication: Publication, epubFolderPath : URL,
+                resourcesServer: ResourcesServer,
+                initialLocation: Locator? = nil,
+                config: Configuration = .init()) {
         self.publication = publication
+        self.epubFolderPath = epubFolderPath
         self.license = nil
         self.editingActions = EditingActionsController(actions: config.editingActions, license: license)
         self.userSettings = UserSettings()
@@ -94,7 +106,22 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         self.readingProgression = publication.contentLayout.readingProgression
         self.config = config
         self.paginationView = PaginationView(frame: .zero, preloadPreviousPositionCount: config.preloadPreviousPositionCount, preloadNextPositionCount: config.preloadNextPositionCount)
-        self.resourcesURL = URL.init(string: "")
+        
+        self.resourcesURL = {
+            do {
+                guard let baseURL = Bundle(for: EPUBNavigatorViewController.self).resourceURL else {
+                    return nil
+                }
+                return try resourcesServer.serve(
+                   baseURL.appendingPathComponent("Static"),
+                    at: "/r2-navigator/epub"
+                )
+            } catch {
+                EPUBNavigatorViewController.log(.error, error)
+                return nil
+            }
+        }()
+        
         super.init(nibName: nil, bundle: nil)
         self.editingActions.delegate = self
         self.paginationView.delegate = self
@@ -490,6 +517,11 @@ extension EPUBNavigatorViewController: EditingActionsControllerDelegate {
 
 extension EPUBNavigatorViewController: PaginationViewDelegate {
     
+        public func execJS(script : String, completion: ((Any?, Error?) -> Void)? = nil) {
+            print("evaluate js")
+            (paginationView.currentView as! EPUBSpreadView).evaluateScript(script, completion: completion)
+        }
+    
     func paginationView(_ paginationView: PaginationView, pageViewAtIndex index: Int) -> (UIView & PageView)? {
         let spread = spreads[index]
         let spreadViewType = (spread.layout == .fixed) ? EPUBFixedSpreadView.self : EPUBReflowableSpreadView.self
@@ -497,12 +529,15 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
             publication: publication,
             spread: spread,
             resourcesURL: resourcesURL,
+            epubFolderPath: epubFolderPath,
             contentLayout: publication.contentLayout,
             readingProgression: readingProgression,
             userSettings: userSettings,
             animatedLoad: false,  // FIXME: custom animated
             editingActions: editingActions,
-            contentInset: config.contentInset
+            contentInset: config.contentInset,
+            customScripts: self.config.customScripts,
+            jsEventHandlers: self.config.jsEventHandlers
         )
         spreadView.delegate = self
         return spreadView

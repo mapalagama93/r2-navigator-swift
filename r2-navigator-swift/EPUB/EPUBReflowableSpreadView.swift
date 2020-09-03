@@ -55,11 +55,22 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             return
         }
         let link = spread.leading
-        guard let url = publication.url(to: link) else {
-            log(.error, "Can't get URL for link \(link.href)")
-            return
-        }
-        webView.load(URLRequest(url: url))
+        let url = self.epubFolderPath.appendingPathComponent(link.href)
+        
+        do {
+               var html = try String.init(contentsOf: url)
+//               if let tf = transformHtml {
+//                   html = tf(html)
+//               }
+               DispatchQueue.main.async {
+                   self.webView.loadHTMLString(html, baseURL: url)
+               }
+           } catch {
+               print("error while loading html \(error.localizedDescription)")
+               DispatchQueue.main.async {
+                   self.webView.loadHTMLString("<h3> Page cannot load. Please contact support. </h3>", baseURL: url)
+               }
+           }
     }
 
     override func applyUserSettingsStyle() {
@@ -299,7 +310,12 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
     override func makeScripts() -> [WKUserScript] {
         var scripts = super.makeScripts()
         
+        for script in customScripts ?? [] {
+            scripts.append(script)
+        }
+        
         scripts.append(WKUserScript(source: EPUBReflowableSpreadView.reflowableScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        
 
         // Injects Readium CSS's stylesheets.
         if let resourcesURL = resourcesURL {
