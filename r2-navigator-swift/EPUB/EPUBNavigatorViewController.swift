@@ -537,7 +537,8 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
             editingActions: editingActions,
             contentInset: config.contentInset,
             customScripts: self.config.customScripts,
-            jsEventHandlers: self.config.jsEventHandlers
+            jsEventHandlers: self.config.jsEventHandlers,
+            onTransformHtml : self.config.transformHtml
         )
         spreadView.delegate = self
         return spreadView

@@ -59,9 +59,9 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         
         do {
                var html = try String.init(contentsOf: url)
-//               if let tf = transformHtml {
-//                   html = tf(html)
-//               }
+            if let tf = self.transformHtml {
+                   html = tf(html)
+               }
                DispatchQueue.main.async {
                    self.webView.loadHTMLString(html, baseURL: url)
                }

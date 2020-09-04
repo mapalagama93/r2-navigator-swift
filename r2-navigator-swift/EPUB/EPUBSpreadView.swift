@@ -47,6 +47,7 @@ class EPUBSpreadView: UIView, Loggable {
     var epubFolderPath : URL!
     var customScripts : [WKUserScript]?
     var jsEventHandlers : [String : (Any) -> Void]?
+    var transformHtml : ((_ html : String) -> String)?
     let resourcesURL: URL?
     let webView: WebView
 
@@ -73,7 +74,7 @@ class EPUBSpreadView: UIView, Loggable {
 
     private(set) var spreadLoaded = false
 
-    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, epubFolderPath :URL!, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets], customScripts : [WKUserScript], jsEventHandlers : [String : (Any) -> Void]?) {
+    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, epubFolderPath :URL!, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets], customScripts : [WKUserScript], jsEventHandlers : [String : (Any) -> Void]?, onTransformHtml: ((_ html : String) -> String)?) {
         self.publication = publication
         self.spread = spread
         self.resourcesURL = resourcesURL
@@ -86,7 +87,7 @@ class EPUBSpreadView: UIView, Loggable {
         self.contentInset = contentInset
         self.epubFolderPath = epubFolderPath
         self.customScripts = customScripts
-
+        self.transformHtml = onTransformHtml
         super.init(frame: .zero)
         
         isOpaque = false
