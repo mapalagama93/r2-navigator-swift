@@ -17,10 +17,10 @@ import R2Shared
 
 /// A view rendering a spread of resources with a reflowable layout.
 final class EPUBReflowableSpreadView: EPUBSpreadView {
-
+    
     private var topConstraint: NSLayoutConstraint!
     private var bottomConstraint: NSLayoutConstraint!
-
+    
     override func setupWebView() {
         super.setupWebView()
         scrollView.bounces = false
@@ -37,7 +37,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             webView.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
     }
-
+    
     @available(iOS 11.0, *)
     override func safeAreaInsetsDidChange() {
         super.safeAreaInsetsDidChange()
@@ -58,21 +58,22 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         let url = self.epubFolderPath.appendingPathComponent(link.href)
         
         do {
-               var html = try String.init(contentsOf: url)
+            var html = try String.init(contentsOf: url)
             if let tf = self.transformHtml {
-                   html = tf(html)
-               }
-               DispatchQueue.main.async {
-                   self.webView.loadHTMLString(html, baseURL: url)
-               }
-           } catch {
-               print("error while loading html \(error.localizedDescription)")
-               DispatchQueue.main.async {
-                   self.webView.loadHTMLString("<h3> Page cannot load. Please contact support. </h3>", baseURL: url)
-               }
-           }
+                html = tf(html)
+            }
+            html = html.replacingOccurrences(of: "<img", with: "<img onclick=\"handleImageClick(this);\"")
+            DispatchQueue.main.async {
+                self.webView.loadHTMLString(html, baseURL: url)
+            }
+        } catch {
+            print("error while loading html \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.webView.loadHTMLString("<h3> Page cannot load. Please contact support. </h3>", baseURL: url)
+            }
+        }
     }
-
+    
     override func applyUserSettingsStyle() {
         super.applyUserSettingsStyle()
         
@@ -90,13 +91,13 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             return script + "readium.setProperty(\"\(property.name)\", \"\(value)\");\n"
         }
         evaluateScript(propertiesScript)
-
+        
         // Disables paginated mode if scroll is on.
         scrollView.isPagingEnabled = !isScrollEnabled
         
         updateContentInset()
     }
-
+    
     private func updateContentInset() {
         if (isScrollEnabled) {
             topConstraint.constant = 0
@@ -152,7 +153,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         }
         return progression
     }
-
+    
     override func spreadDidLoad() {
         // FIXME: We need to give the CSS and webview time to layout correctly. 0.2 seconds seems like a good value for it to work on an iPhone 5s. Look into solving this better
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -175,7 +176,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
                 return 1
             }
         }()
-
+        
         let offsetX = scrollView.bounds.width * factor
         var newOffset = scrollView.contentOffset
         newOffset.x += offsetX
@@ -192,24 +193,24 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         scrollView.scrollRectToVisible(area, animated: animated)
         // FIXME: completion needs to be implemented using scroll view delegate
         DispatchQueue.main.async(execute: completion)
-
+        
         return true
     }
     
     // Location to scroll to in the resource once the page is loaded.
     private var pendingLocation: PageLocation = .start
-
+    
     private let goToCompletions = CompletionList()
-
+    
     override func go(to location: PageLocation, completion: (() -> Void)?) {
         let completion = goToCompletions.add(completion)
-
+        
         guard spreadLoaded else {
             // Delays moving to the location until the document is loaded.
             pendingLocation = location
             return
         }
-
+        
         switch location {
         case .locator(let locator):
             go(to: locator, completion: completion)
@@ -219,7 +220,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             go(toProgression: 1, completion: completion)
         }
     }
-
+    
     private func go(to locator: Locator, completion: @escaping () -> Void) {
         guard ["", "#"].contains(locator.href) || spread.contains(href: locator.href) else {
             log(.warning, "The locator's href is not in the spread")
@@ -240,7 +241,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             completion()
         }
     }
-
+    
     /// Scrolls at given progression (from 0.0 to 1.0)
     private func go(toProgression progression: Double, completion: @escaping () -> Void) {
         guard progression >= 0 && progression <= 1 else {
@@ -316,7 +317,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         
         scripts.append(WKUserScript(source: EPUBReflowableSpreadView.reflowableScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         
-
+        
         // Injects Readium CSS's stylesheets.
         if let resourcesURL = resourcesURL {
             // When a publication is served from an HTTPS server, then WKWebView forbids accessing the stylesheets from the local, unsecured GCDWebServer instance. In this case we will inject directly the full content of the CSS in the JavaScript.
@@ -336,7 +337,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
                     injectionTime: .atDocumentStart,
                     forMainFrameOnly: false
                 ))
-
+                
             } else {
                 scripts.append(WKUserScript(
                     source: EPUBReflowableSpreadView.cssScript
@@ -361,7 +362,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(notifyPagesDidChange), object: nil)
         perform(#selector(notifyPagesDidChange), with: nil, afterDelay: 0.3)
     }
-
+    
 }
 
 private extension ContentLayout {
