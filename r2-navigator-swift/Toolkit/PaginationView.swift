@@ -277,13 +277,33 @@ final class PaginationView: UIView {
         
         func fade(to alpha: CGFloat, completion: @escaping () -> ()) {
             if animated {
-                UIView.animate(withDuration: 0.15, animations: {
+                UIView.animate(withDuration: 0.2, animations: {
                     self.alpha = alpha
                 }) { _ in completion() }
             } else {
                 self.alpha = alpha
                 completion()
             }
+            
+            if animated {
+                if alpha == 0 {
+                    if currentIndex > index {
+                        UIView.animate(withDuration: 0.2, animations: {
+                            self.currentView?.frame.origin.y = 1000
+                        }) { _ in
+                            self.currentView?.frame.origin.y = 0
+                        }
+                    }else{
+                        UIView.animate(withDuration: 0.2, animations: {
+                            self.currentView?.frame.origin.y = -1000
+                        }) { _ in
+                            self.currentView?.frame.origin.y = 0
+                        }
+                    }
+                    
+                }
+            }
+            
         }
         
         fade(to: 0) {
