@@ -59,7 +59,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         ]
         
         /// Number of positions (as in `Publication.positionList`) to preload before the current page.
-        public var preloadPreviousPositionCount = 1
+        public var preloadPreviousPositionCount = 3
         
         /// Number of positions (as in `Publication.positionList`) to preload after the current page.
         public var preloadNextPositionCount = 3
@@ -263,6 +263,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         if let location = location {
             go(to: location)
         }
+        self.paginationView.fixScroll()
     }
 
     
@@ -301,6 +302,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }()
 
         paginationView.reloadAtIndex(initialIndex, location: PageLocation(locator), pageCount: spreads.count, readingProgression: readingProgression)
+        self.paginationView.fixScroll()
     }
 
     
@@ -517,6 +519,12 @@ extension EPUBNavigatorViewController: EditingActionsControllerDelegate {
 
 extension EPUBNavigatorViewController: PaginationViewDelegate {
     
+    func shouldOverRide() -> Bool {
+        let isScroll = self.userSettings.userProperties.getProperty(reference: ReadiumCSSReference.scroll.rawValue) as? Switchable
+        return isScroll?.on ?? false
+    }
+    
+    
         public func execJS(script : String, completion: ((Any?, Error?) -> Void)? = nil) {
             print("evaluate js")
             (paginationView.currentView as! EPUBSpreadView).evaluateScript(script, completion: completion)
@@ -525,6 +533,7 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
     func paginationView(_ paginationView: PaginationView, pageViewAtIndex index: Int) -> (UIView & PageView)? {
         let spread = spreads[index]
         let spreadViewType = (spread.layout == .fixed) ? EPUBFixedSpreadView.self : EPUBReflowableSpreadView.self
+        print("epub spread layout type \(spread.layout)")
         let spreadView = spreadViewType.init(
             publication: publication,
             spread: spread,
@@ -538,7 +547,9 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
             contentInset: config.contentInset,
             customScripts: self.config.customScripts,
             jsEventHandlers: self.config.jsEventHandlers,
-            onTransformHtml : self.config.transformHtml
+            onTransformHtml : self.config.transformHtml,
+            goToNext: self.goToNext,
+            goToPrev: self.goToPrev
         )
         spreadView.delegate = self
         return spreadView
@@ -553,6 +564,14 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
         if let currentResourceIndex = currentResourceIndex {
             delegate?.didChangedDocumentPage(currentDocumentIndex: currentResourceIndex)
         }
+    }
+    
+    func goToNext() {
+        self.goForward(animated: true, completion: {})
+    }
+    
+    func goToPrev() {
+       self.goBackward(animated: true, completion: {})
     }
     
 }

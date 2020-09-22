@@ -57,18 +57,20 @@ protocol PaginationViewDelegate: class {
     
     /// Called when the page views were updated.
     func paginationViewDidUpdateViews(_ paginationView: PaginationView)
+    
+    func shouldOverRide() -> Bool
 }
 
 final class PaginationView: UIView {
     
     weak var delegate: PaginationViewDelegate?
-
+    
     /// Total number of page views to be paginated.
     private(set) var pageCount: Int = 0
     
     /// Index of the page currently being displayed.
     private(set) var currentIndex: Int = 0
-
+    
     /// Direction for the reading progression.
     private(set) var readingProgression: ReadingProgression = .ltr
     
@@ -83,7 +85,7 @@ final class PaginationView: UIView {
     var isEmpty: Bool {
         return loadedViews.isEmpty
     }
-
+    
     /// Return the currently presented page view from the Views array.
     var currentView: (UIView & PageView)? {
         return loadedViews[currentIndex]
@@ -101,7 +103,7 @@ final class PaginationView: UIView {
         
         return orderedViews
     }
-
+    
     private let scrollView = UIScrollView()
     
     init(frame: CGRect, preloadPreviousPositionCount: Int, preloadNextPositionCount: Int) {
@@ -116,6 +118,9 @@ final class PaginationView: UIView {
         scrollView.isPagingEnabled = true
         scrollView.bounces = false
         scrollView.showsHorizontalScrollIndicator = false
+        if delegate?.shouldOverRide() ?? false {
+            scrollView.isScrollEnabled = false
+        }
         addSubview(scrollView)
         
         // Adds an empty view before the scroll view to have a consistent behavior on all iOS versions, regarding to the content inset adjustements. Even if automaticallyAdjustsScrollViewInsets is not set to false on the navigator's parent view controller, the scroll view insets won't be adjusted if the scroll view is not the first child in the subviews hierarchy.
@@ -175,7 +180,7 @@ final class PaginationView: UIView {
             ? scrollView.contentSize.width - (CGFloat(index + 1) * scrollView.bounds.width)
             : scrollView.bounds.width * CGFloat(index)
     }
-
+    
     /// Updates the current and pre-loaded views.
     private func setCurrentIndex(_ index: Int, location: PageLocation? = nil) {
         guard isEmpty || index != currentIndex else {
@@ -188,7 +193,7 @@ final class PaginationView: UIView {
         loadView(at: index, location: location)
         let lastIndex = loadViews(upToPositionCount: preloadNextPositionCount, from: index, direction: .forward, location: .start)
         let firstIndex = loadViews(upToPositionCount: preloadPreviousPositionCount, from: index, direction: .backward, location: .end)
-
+        
         for (i, view) in loadedViews {
             // Flushes the views that are not needed anymore.
             guard firstIndex...lastIndex ~= i else {
@@ -202,11 +207,11 @@ final class PaginationView: UIView {
                 scrollView.addSubview(view)
             }
         }
-
+        
         setNeedsLayout()
         delegate?.paginationViewDidUpdateViews(self)
     }
-
+    
     /// Loads the view at given index if it's not already loaded.
     ///
     /// - Returns: The loaded page view, if any.
@@ -301,9 +306,13 @@ final class PaginationView: UIView {
             return
         }
         
-        scrollView.isScrollEnabled = true
+        if delegate?.shouldOverRide() ?? false  {
+            scrollView.isScrollEnabled = false
+        }else{
+            scrollView.isScrollEnabled = true
+        }
         setCurrentIndex(index, location: location)
-
+        
         scrollView.scrollRectToVisible(CGRect(
             origin: CGPoint(
                 x: xOffsetForIndex(index),
@@ -312,6 +321,16 @@ final class PaginationView: UIView {
             size: scrollView.frame.size
         ), animated: false)
     }
+    
+    public func fixScroll() {
+        if self.delegate?.shouldOverRide() ?? false {
+            self.scrollView.isScrollEnabled = false
+        }else{
+            
+            self.scrollView.isScrollEnabled = true
+        }
+    }
+    
     
 }
 
@@ -322,21 +341,40 @@ extension PaginationView: UIScrollViewDelegate {
     /// Note: using this approach might provide a better experience: https://oleb.net/blog/2014/05/scrollviews-inside-scrollviews/
     
     func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        if delegate?.shouldOverRide() ?? false  {
+            scrollView.isScrollEnabled = false
+            return
+        }
+        
         scrollView.isScrollEnabled = false
     }
     
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        if delegate?.shouldOverRide() ?? false  {
+            scrollView.isScrollEnabled = false
+            return
+        }
         scrollView.isScrollEnabled = true
     }
     
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if delegate?.shouldOverRide() ?? false  {
+            scrollView.isScrollEnabled = false
+            return
+        }
         if !decelerate {
             scrollView.isScrollEnabled = true
         }
     }
     
     public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        scrollView.isScrollEnabled = true
+        
+        if delegate?.shouldOverRide() ?? false  {
+            scrollView.isScrollEnabled = false
+        }else{
+            scrollView.isScrollEnabled = true
+        }
+        
         
         let currentOffset = (readingProgression == .rtl)
             ? scrollView.contentSize.width - (scrollView.contentOffset.x + scrollView.frame.width)

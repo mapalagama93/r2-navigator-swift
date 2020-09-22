@@ -51,6 +51,14 @@ class EPUBSpreadView: UIView, Loggable {
     let resourcesURL: URL?
     let webView: WebView
 
+    //scroll
+    var isAtBottom = false
+    var isAtTop = false
+    var goToNext : (() -> ())?
+    var goToPrev : (() -> ())?
+    var gestureRecognizerUp : UISwipeGestureRecognizer?
+    var gestureRecognizerDown : UISwipeGestureRecognizer?
+    
     let contentLayout: ContentLayout
     let readingProgression: ReadingProgression
     let userSettings: UserSettings
@@ -74,7 +82,8 @@ class EPUBSpreadView: UIView, Loggable {
 
     private(set) var spreadLoaded = false
 
-    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, epubFolderPath :URL!, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets], customScripts : [WKUserScript], jsEventHandlers : [String : (Any) -> Void]?, onTransformHtml: ((_ html : String) -> String)?) {
+    required init(publication: Publication, spread: EPUBSpread, resourcesURL: URL?, epubFolderPath :URL!, contentLayout: ContentLayout, readingProgression: ReadingProgression, userSettings: UserSettings, animatedLoad: Bool = false, editingActions: EditingActionsController, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets], customScripts : [WKUserScript], jsEventHandlers : [String : (Any) -> Void]?, onTransformHtml: ((_ html : String) -> String)?,
+                  goToNext : (() -> ())?, goToPrev : (() -> ())?) {
         self.publication = publication
         self.spread = spread
         self.resourcesURL = resourcesURL
@@ -88,16 +97,20 @@ class EPUBSpreadView: UIView, Loggable {
         self.epubFolderPath = epubFolderPath
         self.customScripts = customScripts
         self.transformHtml = onTransformHtml
+        self.goToNext = goToNext
+        self.goToPrev = goToPrev
         super.init(frame: .zero)
         
         isOpaque = false
         backgroundColor = .clear
         
+        
         webView.frame = bounds
+        addGestureRecognizerForScrolling()
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(webView)
         setupWebView()
-
+        
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapBackground)))
         
         for script in makeScripts() {
@@ -108,7 +121,7 @@ class EPUBSpreadView: UIView, Loggable {
         for (name, handler) in jsEventHandlers ?? [:] {
             registerJSMessage(named: name , handler: handler)
         }
-
+        
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverStatusDidChange), name: Notification.Name(UIAccessibilityVoiceOverStatusChanged), object: nil)
         
         updateActivityIndicator()
@@ -119,7 +132,7 @@ class EPUBSpreadView: UIView, Loggable {
         NotificationCenter.default.removeObserver(self)
         disableJSMessages()
     }
-
+    
     func setupWebView() {
         scrollView.alpha = 0
         
@@ -127,7 +140,7 @@ class EPUBSpreadView: UIView, Loggable {
         scrollView.backgroundColor = UIColor.clear
         
         webView.allowsBackForwardNavigationGestures = false
-
+        
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
         
@@ -135,21 +148,21 @@ class EPUBSpreadView: UIView, Loggable {
             // Prevents the pages from jumping down when the status bar is toggled
             scrollView.contentInsetAdjustmentBehavior = .never
         }
-
+        
         webView.navigationDelegate = self
         webView.uiDelegate = self
         scrollView.delegate = self
     }
-
+    
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
+    
     var scrollView: UIScrollView {
         return webView.scrollView
     }
-
+    
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
         
@@ -166,7 +179,7 @@ class EPUBSpreadView: UIView, Loggable {
     func loadSpread() {
         fatalError("loadSpread() must be implemented in subclasses")
     }
-
+    
     /// Evaluates the given JavaScript into the resource's HTML page.
     func evaluateScript(_ script: String, completion: ((Any?, Error?) -> Void)? = nil) {
         webView.evaluateJavaScript(script, completionHandler: completion)
@@ -197,7 +210,7 @@ class EPUBSpreadView: UIView, Loggable {
             self.log(.error, message)
         }
     }
-  
+    
     /// Called from the JS code when a tap is detected.
     /// If the JS indicates the tap is being handled within the webview, don't take action,
     /// just save the tap data for use by webView(_ webView:decidePolicyFor:decisionHandler:)
@@ -224,7 +237,7 @@ class EPUBSpreadView: UIView, Loggable {
         let point = gesture.location(in: self)
         delegate?.spreadView(self, didTapAt: point)
     }
-
+    
     /// Called by the javascript code when the spread contents is fully loaded.
     /// The JS message `spreadLoaded` needs to be emitted by a subclass script, EPUBSpreadView's scripts don't.
     private func spreadDidLoad(_ body: Any) {
@@ -244,7 +257,7 @@ class EPUBSpreadView: UIView, Loggable {
             self.scrollView.alpha = 1
         })
     }
-
+    
     /// Called by the JavaScript layer when the user selection changed.
     private func selectionDidChange(_ body: Any) {
         guard let selection = body as? [String: Any],
@@ -272,7 +285,7 @@ class EPUBSpreadView: UIView, Loggable {
         }
         delegate?.spreadView(self, present: shareViewController)
     }
-
+    
     /// Update webview style to userSettings.
     /// To override in subclasses.
     func applyUserSettingsStyle() {
@@ -303,13 +316,13 @@ class EPUBSpreadView: UIView, Loggable {
         // The default implementation of a spread view consider that its content is entirely visible on screen.
         return false
     }
-
+    
     
     // MARK: - Scripts
     
     private static let gesturesScript = loadScript(named: "gestures")
     private static let utilsScript = loadScript(named: "utils")
-
+    
     class func loadScript(named name: String) -> String {
         return Bundle(for: EPUBSpreadView.self)
             .url(forResource: "Scripts/\(name)", withExtension: "js")
@@ -333,7 +346,7 @@ class EPUBSpreadView: UIView, Loggable {
     
     private var JSMessages: [String: (Any) -> Void] = [:]
     private var JSMessagesEnabled = false
-
+    
     /// Register a new JS message handler to be emitted from scripts.
     func registerJSMessage(named name: String, handler: @escaping (Any) -> Void) {
         guard JSMessages[name] == nil else {
@@ -392,7 +405,7 @@ class EPUBSpreadView: UIView, Loggable {
         // Scroll mode will be activated if VoiceOver is on
         applyUserSettingsStyle()
     }
-
+    
 }
 
 extension EPUBSpreadView: PageView {
@@ -403,12 +416,12 @@ extension EPUBSpreadView: PageView {
             .map { publication.positionsByResource[$0.href]?.count ?? 0 }
             .reduce(0, +)
     }
-
+    
 }
 
 // MARK: - WKScriptMessageHandler for handling incoming message from the javascript layer.
 extension EPUBSpreadView: WKScriptMessageHandler {
-
+    
     /// Handles incoming calls from JS.
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let handler = JSMessages[message.name] else {
@@ -416,18 +429,18 @@ extension EPUBSpreadView: WKScriptMessageHandler {
         }
         handler(message.body)
     }
-
+    
 }
 
 extension EPUBSpreadView: WKNavigationDelegate {
-
+    
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // Do not remove: overriden in subclasses.
     }
-
+    
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         var policy: WKNavigationActionPolicy = .allow
-
+        
         if navigationAction.navigationType == .linkActivated {
             if let url = navigationAction.request.url {
                 // Check if url is internal or external
@@ -441,7 +454,7 @@ extension EPUBSpreadView: WKNavigationDelegate {
                 policy = .cancel
             }
         }
-
+        
         decisionHandler(policy)
     }
 }
@@ -466,9 +479,8 @@ extension EPUBSpreadView: UIScrollViewDelegate {
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Do not remove, overriden in subclasses.
     }
-
+    
 }
 
 extension EPUBSpreadView: WKUIDelegate {
@@ -482,7 +494,7 @@ extension EPUBSpreadView: WKUIDelegate {
 }
 
 private extension EPUBSpreadView {
-
+    
     func updateActivityIndicator() {
         guard let appearance = userSettings.userProperties.getProperty(reference: ReadiumCSSReference.appearance.rawValue) as? Enumerable,
             appearance.values.count > appearance.index else
@@ -537,5 +549,65 @@ struct TapData {
     
     init(data: Any) {
         self.init(dict: data as? [String: Any] ?? [String: Any]())
+    }
+}
+
+extension EPUBSpreadView {
+    
+    func removeGestureRecongnizerForScrolling() {
+        if self.gestureRecognizerUp != nil {
+            self.webView.removeGestureRecognizer(self.gestureRecognizerUp!)
+        }
+        
+        if self.gestureRecognizerDown != nil {
+            self.webView.removeGestureRecognizer(self.gestureRecognizerDown!)
+        }
+    }
+    
+    func addGestureRecognizerForScrolling() {
+        removeGestureRecongnizerForScrolling()
+        
+        gestureRecognizerUp = UISwipeGestureRecognizer.init(target: self, action: #selector(self.handleGuesture(_:)))
+        gestureRecognizerUp?.direction = .up
+        gestureRecognizerUp?.cancelsTouchesInView = false
+        gestureRecognizerUp?.delegate = self
+        
+        gestureRecognizerDown = UISwipeGestureRecognizer.init(target: self, action: #selector(self.handleGuesture(_:)))
+        gestureRecognizerDown?.direction = .down
+        gestureRecognizerDown?.cancelsTouchesInView = false
+        gestureRecognizerDown?.delegate = self
+        
+        self.webView.addGestureRecognizer(gestureRecognizerDown!)
+        self.webView.addGestureRecognizer(gestureRecognizerUp!)
+    }
+    
+    @objc func handleGuesture(_ sender: UISwipeGestureRecognizer? = nil) {
+        guard let gesture = sender  else {
+            return
+        }
+        let isScroll = self.userSettings.userProperties.getProperty(reference: ReadiumCSSReference.scroll.rawValue) as? Switchable
+        
+        if (isScroll?.on) == false {
+            return
+        }
+        
+        if gesture.direction == .up {
+            if (scrollView.contentOffset.y + scrollView.frame.height) >= scrollView.contentSize.height {
+                self.goToNext?()
+            }
+        }
+        
+        if gesture.direction == .down {
+            if scrollView.contentOffset.y == 0 {
+                self.goToPrev?()
+            }
+        }
+    }
+    
+}
+
+extension EPUBSpreadView : UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }
