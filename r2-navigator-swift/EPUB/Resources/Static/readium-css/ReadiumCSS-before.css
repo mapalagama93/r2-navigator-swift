@@ -413,9 +413,6 @@ var {
 
 /* OTF */
 
-body {
-  font-variant-numeric: oldstyle-nums proportional-nums;
-}
 
 :lang(ja) body,
 :lang(zh) body,
